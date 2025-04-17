@@ -9,5 +9,5 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories
 class ImagicApplication
 
 fun main(args: Array<String>) {
-	runApplication<ImagicApplication>(*args)
+    runApplication<ImagicApplication>(*args)
 }

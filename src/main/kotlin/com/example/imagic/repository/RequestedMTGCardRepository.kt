@@ -1,7 +1,6 @@
 package com.example.imagic.repository
 
-import com.example.imagic.model.OperationId
-import com.example.imagic.model.dto.db.RequestedMTGCard
+import com.example.imagic.model.db.RequestedMTGCardTableRow
 import org.springframework.data.jpa.repository.JpaRepository
 
-interface RequestedMTGCardRepository : JpaRepository<RequestedMTGCard, String>
+interface RequestedMTGCardRepository : JpaRepository<RequestedMTGCardTableRow, String>

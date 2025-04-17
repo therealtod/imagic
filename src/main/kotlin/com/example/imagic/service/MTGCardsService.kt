@@ -5,15 +5,15 @@ import com.example.imagic.external.scryfall.ScryfallConnectionException
 import com.example.imagic.external.scryfall.client.ScryfallClient
 import com.example.imagic.external.scryfall.model.dto.FailureData
 import com.example.imagic.model.ItemProcessingStatus
+import com.example.imagic.model.MTGCardsOperation
 import com.example.imagic.model.OperationId
 import com.example.imagic.model.OperationStatus
-import com.example.imagic.model.dto.api.ProcessedMTGCardData
+import com.example.imagic.model.db.MTGCardsOperationTableRow
 import com.example.imagic.model.dto.api.OperationStatusResponse
-import com.example.imagic.model.dto.db.MTGCardsOperation
+import com.example.imagic.model.dto.api.ProcessedMTGCardData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service
 import java.net.URI
 
@@ -22,6 +22,8 @@ class MTGCardsService(
     private val scryfallClient: ScryfallClient,
     private val dataPersistenceService: DataPersistenceService,
 ) {
+    private val coroutineScope = CoroutineScope(Dispatchers.IO)
+
     /**
      * Starts the processing of all the cards with names included in the given [cardNames] list
      *
@@ -29,7 +31,7 @@ class MTGCardsService(
      */
     suspend fun processCardNames(cardNames: List<String>): OperationId {
         val operationId = Common.generateRandomUniqueID()
-        CoroutineScope(Dispatchers.IO).launch {
+        coroutineScope.launch {
             val operationDBRecord = dataPersistenceService.storeOperationInitialData(
                 operationId = operationId,
                 cardNames = cardNames,
@@ -44,8 +46,8 @@ class MTGCardsService(
     }
 
     fun getOperationStatus(operationId: OperationId): OperationStatusResponse {
-        val operationRecord = dataPersistenceService.getOperationData(operationId)
-        val cardGroups = operationRecord.requestedCards.groupBy { it.pngURI != null }
+        val operation = dataPersistenceService.getOperationData(operationId)
+        val cardGroups = operation.cards.groupBy { it.pngURI != null }
         val results = cardGroups[true]
             .orEmpty()
             .map {
@@ -62,7 +64,7 @@ class MTGCardsService(
                     error = it.operationStatus.message,
                 )
             }
-        val status = determineOperationStatus(operationRecord)
+        val status = determineOperationStatus(operation)
         return OperationStatusResponse(
             operationId = operationId,
             status = status,
@@ -71,14 +73,16 @@ class MTGCardsService(
         )
     }
 
-    suspend fun processBatch(operationDBRecord: MTGCardsOperation, cardNames: List<String>) {
+    suspend fun processBatch(operationDBRecord: MTGCardsOperationTableRow, cardNames: List<String>) {
         try {
             val metadataMono = scryfallClient.fetchCardsData(cardNames)
             metadataMono.subscribe {
-                dataPersistenceService.storeCardsData(
-                    operation = operationDBRecord,
-                    mtgCardsCollection = it,
-                )
+                coroutineScope.launch {
+                    dataPersistenceService.storeCardsData(
+                        operation = operationDBRecord,
+                        mtgCardsCollection = it,
+                    )
+                }
             }
         } catch (ex: ScryfallConnectionException) {
             dataPersistenceService.writeFailedBatchData(operation = operationDBRecord, cardNames = cardNames)
@@ -87,12 +91,12 @@ class MTGCardsService(
 
     }
 
-    private fun determineOperationStatus(operationRecord: MTGCardsOperation): OperationStatus {
-        return if (operationRecord.requestedCards.any { it.operationStatus == ItemProcessingStatus.PENDING })
+    private fun determineOperationStatus(operation: MTGCardsOperation): OperationStatus {
+        return if (operation.cards.any { it.operationStatus == ItemProcessingStatus.PENDING })
             OperationStatus.PROCESSING
-        else if (operationRecord.requestedCards.all { it.operationStatus == ItemProcessingStatus.FOUND })
+        else if (operation.cards.all { it.operationStatus == ItemProcessingStatus.FOUND })
             OperationStatus.SUCCESS
-        else if (operationRecord.requestedCards.any { it.operationStatus == ItemProcessingStatus.FOUND })
+        else if (operation.cards.any { it.operationStatus == ItemProcessingStatus.FOUND })
             OperationStatus.PARTIAL_SUCCESS
         else OperationStatus.FAILURE
     }

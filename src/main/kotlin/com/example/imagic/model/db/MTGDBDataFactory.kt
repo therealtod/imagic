@@ -1,11 +1,14 @@
-package com.example.imagic.model.dto.db
+package com.example.imagic.model.db
 
 import com.example.imagic.external.scryfall.model.dto.MTGCardMetadata
 import com.example.imagic.model.ItemProcessingStatus
 
 object MTGDBDataFactory {
-    fun createInitialCardOperationDBData(operation: MTGCardsOperation, cardName: String): RequestedMTGCard  {
-        return RequestedMTGCard(
+    fun createInitialCardOperationDBData(
+        operation: MTGCardsOperationTableRow,
+        cardName: String
+    ): RequestedMTGCardTableRow {
+        return RequestedMTGCardTableRow(
             cardName = cardName,
             operation = operation,
             operationStatus = ItemProcessingStatus.PENDING,
@@ -13,11 +16,11 @@ object MTGDBDataFactory {
     }
 
     fun createCardOperationDBData(
-        operation: MTGCardsOperation,
+        operation: MTGCardsOperationTableRow,
         scryfallData: MTGCardMetadata,
-        ): RequestedMTGCard {
+    ): RequestedMTGCardTableRow {
         val pngUri = scryfallData.imageUris["png"]
-        return RequestedMTGCard(
+        return RequestedMTGCardTableRow(
             cardName = scryfallData.name,
             operation = operation,
             operationStatus = if (pngUri != null) ItemProcessingStatus.FOUND else ItemProcessingStatus.NO_PNG_IMAGE,
@@ -26,10 +29,10 @@ object MTGDBDataFactory {
     }
 
     fun createNotFoundCardDBData(
-        operation: MTGCardsOperation,
+        operation: MTGCardsOperationTableRow,
         cardName: String,
-    ): RequestedMTGCard {
-        return RequestedMTGCard(
+    ): RequestedMTGCardTableRow {
+        return RequestedMTGCardTableRow(
             cardName = cardName,
             operation = operation,
             operationStatus = ItemProcessingStatus.NOT_FOUND,
@@ -38,11 +41,11 @@ object MTGDBDataFactory {
     }
 
     fun createFailedScryfallApiRequestData(
-        operation: MTGCardsOperation,
+        operation: MTGCardsOperationTableRow,
         cardName: String,
-    ): RequestedMTGCard {
-        return RequestedMTGCard(
-            cardName =cardName,
+    ): RequestedMTGCardTableRow {
+        return RequestedMTGCardTableRow(
+            cardName = cardName,
             operation = operation,
             operationStatus = ItemProcessingStatus.NETWORK_ERROR,
         )

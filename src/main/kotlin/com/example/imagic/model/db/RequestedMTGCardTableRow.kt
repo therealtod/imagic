@@ -1,25 +1,25 @@
-package com.example.imagic.model.dto.db
+package com.example.imagic.model.db
 
 import com.example.imagic.model.ItemProcessingStatus
 import jakarta.persistence.*
 
 @Entity
 @Table(name = "requested_mtg_card")
-@IdClass(RequestedMTGCardId::class)
-data class RequestedMTGCard(
+@IdClass(RequestedMTGCardTableId::class)
+data class RequestedMTGCardTableRow(
     @Id
     val cardName: String,
     @Id
     @ManyToOne
     @JoinColumn(name = "operationId")
-    val operation: MTGCardsOperation,
+    val operation: MTGCardsOperationTableRow,
     val operationStatus: ItemProcessingStatus,
     val pngURI: String? = null,
 )
 
-data class RequestedMTGCardId(
+data class RequestedMTGCardTableId(
     var cardName: String?,
-    var operation: MTGCardsOperation?,
+    var operation: MTGCardsOperationTableRow?,
 ) {
-    constructor(): this(null, null)
+    constructor() : this(null, null)
 }

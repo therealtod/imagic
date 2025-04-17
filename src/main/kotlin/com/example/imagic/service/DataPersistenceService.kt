@@ -1,15 +1,15 @@
 package com.example.imagic.service
 
+import com.example.imagic.exception.OperationNotFoundException
 import com.example.imagic.external.scryfall.model.dto.MTGCardsCollection
+import com.example.imagic.model.MTGCardsOperation
 import com.example.imagic.model.OperationId
-import com.example.imagic.model.dto.db.MTGCardsOperation
-import com.example.imagic.model.dto.db.MTGDBDataFactory
+import com.example.imagic.model.db.MTGCardsOperationTableRow
+import com.example.imagic.model.db.MTGDBDataFactory
 import com.example.imagic.repository.MTGCardsOperationRepository
 import com.example.imagic.repository.RequestedMTGCardRepository
-import jakarta.transaction.Transactional
-import kotlinx.coroutines.delay
-import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class DataPersistenceService(
@@ -17,8 +17,11 @@ class DataPersistenceService(
     private val requestedMTGCardRepository: RequestedMTGCardRepository,
 ) {
     @Transactional
-    suspend fun storeOperationInitialData(operationId: OperationId, cardNames: List<String>): MTGCardsOperation {
-        val operationDBRecord = MTGCardsOperation(
+    suspend fun storeOperationInitialData(
+        operationId: OperationId,
+        cardNames: List<String>
+    ): MTGCardsOperationTableRow {
+        val operationDBRecord = MTGCardsOperationTableRow(
             operationId = operationId,
         )
 
@@ -35,7 +38,7 @@ class DataPersistenceService(
     }
 
     @Transactional
-    fun storeCardsData(operation: MTGCardsOperation, mtgCardsCollection: MTGCardsCollection) {
+    suspend fun storeCardsData(operation: MTGCardsOperationTableRow, mtgCardsCollection: MTGCardsCollection) {
         val successfullyRetrievedCardsRecords = mtgCardsCollection
             .data
             .map {
@@ -56,7 +59,10 @@ class DataPersistenceService(
     }
 
     @Transactional
-    fun writeFailedBatchData(operation: MTGCardsOperation, cardNames: List<String>): MTGCardsOperation {
+    suspend fun writeFailedBatchData(
+        operation: MTGCardsOperationTableRow,
+        cardNames: List<String>
+    ): MTGCardsOperationTableRow {
         val cardsDBRecords = cardNames.map {
             MTGDBDataFactory.createFailedScryfallApiRequestData(operation, cardName = it)
         }
@@ -65,8 +71,10 @@ class DataPersistenceService(
         return operationRepository.getReferenceById(operation.operationId)
     }
 
+    @Transactional(readOnly = true)
     fun getOperationData(operationId: OperationId): MTGCardsOperation {
-        return operationRepository.getReferenceById(operationId)
-        // TODO take care of non existing IDS
+        return operationRepository.findByIdWithCards(operationId)
+            ?.let { MTGCardsOperation(it) }
+            ?: throw OperationNotFoundException("Could not find a operation with id $operationId in the database")
     }
 }

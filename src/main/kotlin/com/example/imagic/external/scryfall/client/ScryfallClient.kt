@@ -1,7 +1,6 @@
 package com.example.imagic.external.scryfall.client
 
 import com.example.imagic.external.scryfall.ScryfallConnectionException
-import com.example.imagic.external.scryfall.model.dto.MTGCardMetadata
 import com.example.imagic.external.scryfall.model.dto.MTGCardsCollection
 import com.example.imagic.external.scryfall.model.dto.MTGCardsCollectionRequest
 import io.netty.handler.timeout.TimeoutException
@@ -14,7 +13,6 @@ import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import org.springframework.web.reactive.function.client.bodyToMono
 import reactor.core.publisher.Mono
-import reactor.kotlin.core.publisher.onErrorResume
 import reactor.util.retry.Retry
 import java.time.Duration
 
@@ -63,13 +61,25 @@ class ScryfallClient(private val webClientBuilder: WebClient.Builder) {
             .onErrorResume { error ->
                 when (error) {
                     is WebClientResponseException -> {
-                        Mono.error(ScryfallConnectionException("API responded with error: ${error.statusCode}", error.statusCode))
+                        Mono.error(
+                            ScryfallConnectionException(
+                                "API responded with error: ${error.statusCode}",
+                                error.statusCode
+                            )
+                        )
                     }
+
                     is TimeoutException -> {
                         Mono.error(ScryfallConnectionException("API request timed out", HttpStatus.REQUEST_TIMEOUT))
                     }
+
                     else -> {
-                        Mono.error(ScryfallConnectionException("Failed to call API: ${error.message}", HttpStatus.INTERNAL_SERVER_ERROR))
+                        Mono.error(
+                            ScryfallConnectionException(
+                                "Failed to call API: ${error.message}",
+                                HttpStatus.INTERNAL_SERVER_ERROR
+                            )
+                        )
                     }
                 }
             }
