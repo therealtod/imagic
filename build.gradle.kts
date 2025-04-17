@@ -53,3 +53,19 @@ allOpen {
 tasks.withType<Test> {
 	useJUnitPlatform()
 }
+
+
+// ===== Docker-specific configurations =====
+tasks.bootJar {
+	archiveFileName.set("imagic-${version}.jar")
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+springBoot {
+	buildInfo() // Generates build-info.properties
+}
+
+// Optimize for containerized environments
+tasks.withType<JavaCompile> {
+	options.compilerArgs.addAll(listOf("-parameters", "-Xlint:unchecked"))
+}
